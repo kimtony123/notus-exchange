@@ -72,7 +72,7 @@ const HistoryChart = () => {
   };
   const data = {
     labels: coinChartData.map((value: { x: moment.MomentInput }) =>
-      moment(value.x).format("YYYY-MM-DD hh:mm")
+      moment(value.x).format(" hh:mm")
     ),
     datasets: [
       {
