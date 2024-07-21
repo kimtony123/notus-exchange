@@ -89,7 +89,10 @@ const HistoryChart = () => {
     <Container>
       <Menu>
         <Button icon="heart" color="green" />
-        <Button color="green"> Notus Options </Button>
+        <Button href="/" color="green">
+          {" "}
+          Notus Options{" "}
+        </Button>
 
         <MenuMenu position="right">
           {address ? (

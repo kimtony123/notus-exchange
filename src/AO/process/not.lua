@@ -13,6 +13,9 @@ Balances = Balances or {}
 -- Credentials token
 NOT = "HmOxNfr7ZCmT7hhx1LTO7765b-NGoT6lhha_ffjaCn4"
 
+-- Credentials token
+Owner  = "1J_5LXOiHRZQtOYYyjL7CpG-SdAXMVtwkcsYo7-ky40"
+
 -- Table to track addresses that have requested tokens
 RequestedAddresses = RequestedAddresses or {}
 
@@ -20,6 +23,8 @@ openTrades = openTrades or {}
 expiredTrades = expiredTrades or {}
 closedTrades = closedTrades or {}
 winners = winners or {}
+ArchivedTrades = ArchivedTrades or {}
+WinnersList = WinnersList or {}
 
 -- Callback function for fetch price
 fetchPriceCallback = nil
@@ -76,31 +81,6 @@ function getTokenPrice(token)
     end
 end
 
-function tableToJsonClosed(tbl)
-    local result = {}
-    for key, value in pairs(tbl) do
-        local valueType = type(value)
-        if valueType == "table" then
-            value = tableToJson(value)
-            table.insert(result, string.format('"%s":%s', key, value))
-        elseif valueType == "string" then
-            table.insert(result, string.format('"%s":"%s"', key, value))
-        elseif valueType == "number" then
-            -- Check if the number is an integer or float and format accordingly
-            if value % 1 == 0 then
-                table.insert(result, string.format('"%s":%d', key, value))
-            else
-                table.insert(result, string.format('"%s":%f', key, value))
-            end
-        elseif valueType == "function" then
-            table.insert(result, string.format('"%s":"%s"', key, tostring(value)))
-        end
-    end
-
-    local json = "{" .. table.concat(result, ",") .. "}"
-    return json
-end
-
 function tableToJson(tbl)
     local result = {}
     for key, value in pairs(tbl) do
@@ -120,7 +100,6 @@ function tableToJson(tbl)
     local json = "{" .. table.concat(result, ",") .. "}"
     return json
 end
-
 
 -- Function to check if the trade is a winner
 function checkTradeWinner(trade, closingPrice)
@@ -226,7 +205,25 @@ function processExpiredContracts(msg)
     sendRewards()
 end
 
+function archiveClosedTrades()
+    if #closedTrades > 10 then
+        for tradeId, trade in pairs(closedTrades) do
+            ArchivedTrades[tradeId] = trade
+        end
+        closedTrades = {}
+        print("Archived closed trades")
+    end
+end
 
+function archiveWinners()
+    if #winners > 10 then
+        for tradeId, trade in pairs(winners) do
+            WinnersList[tradeId] = trade
+        end
+        winners = {}
+        print("Archived winners")
+    end
+end
 
 Handlers.add(
     "GetTokenPrice",
@@ -251,11 +248,10 @@ Handlers.add(
     end
 )
 
-
 Handlers.add(
     "reward",
     Handlers.utils.hasMatchingTag("Action", "reward"),
- sendRewards
+    sendRewards
 )
 
 Handlers.add(
@@ -266,180 +262,38 @@ Handlers.add(
 
 Handlers.add(
     "completeTrade",
-    Handlers.utils.hasMatchingTag("Action", "completeTrade"),
-    function(m)
-        processExpiredContracts(m)
-    end
+    Handlers.utils.hasMatchingTag("Action", "Complete-Trade"),
+    processExpiredContracts
 )
 
 Handlers.add(
-    "checkContract",
-    Handlers.utils.hasMatchingTag("Action", "checkContract"),
-        checkExpiredContracts
+    "checkExpiredContracts",
+    Handlers.utils.hasMatchingTag("Action", "Check-Expired-Contracts"),
+    checkExpiredContracts
 )
 
 Handlers.add(
-    "trade",
-    Handlers.utils.hasMatchingTag("Action", "trade"),
-    function(m)
-        currentTime = getCurrentTime(m)
-        if m.Tags.TradeId and m.Tags.CreatedTime and m.Tags.AssetId and m.Tags.AssetPrice and m.Tags.ContractType
-            and m.Tags.ContractStatus and m.Tags.ContractExpiry and m.Tags.BetAmount and m.Tags.Payout then
-
-            -- Convert BetAmount and ContractExpiry to numbers
-            local qty = tonumber(m.Tags.BetAmount)
-            local contractExpiry = tonumber(m.Tags.ContractExpiry)
-
-            -- Check if qty or contractExpiry is nil and handle the error
-            if qty == nil then
-                print("Error: BetAmount is not a valid number.")
-                ao.send({ Target = m.From, Data = "Invalid BetAmount. It must be a number." })
-                return
-            end
-
-            if contractExpiry == nil then
-                print("Error: ContractExpiry is not a valid number.")
-                ao.send({ Target = m.From, Data = "Invalid ContractExpiry. It must be a number." })
-                return
-            end
-
-            -- Validate qty is a number
-            assert(type(qty) == 'number', 'Quantity Tag must be a number')
-
-            -- Validate contractExpiry is a number and not less than 5
-            assert(type(contractExpiry) == 'number', 'ContractExpiry Tag must be a number')
-            if contractExpiry < 5 then
-                print("Error: ContractExpiry must be at least 5 minutes.")
-                ao.send({ Target = m.From, Data = "Invalid ContractExpiry. It must be at least 5 minutes." })
-                return
-            end
-
-            -- Check if qty is positive
-            if qty <= 0 then
-                print("Error: BetAmount must be a positive number.")
-                ao.send({ Target = m.From, Data = "Invalid BetAmount. It must be a positive number." })
-                return
-            end
-
-            -- Check if the user has enough balance
-            local userBalance = Balances[m.From] or 0
-            if userBalance < qty then
-                print("Error: Insufficient balance for user:", m.From)
-                ao.send({ Target = m.From, Data = "Insufficient balance to place the trade." })
-                return
-            end
-
-            -- Check if qty is within the allowed range
-            if qty > 1 and qty < 200000000 then
-                ao.send({
-                    Target = NOT,
-                    Action = "Transfer",
-                    Quantity = tostring(qty),
-                    Recipient = NOT
-                })
-                
-                Balances[m.From] = userBalance - qty
-                print("Transferred: " .. qty .. " successfully to " .. NOT)
-                local outcome = tostring("pending")
-                openTrades[m.Tags.TradeId] = {
-                    UserId = m.From,
-                    TradeId = m.Tags.TradeId,
-                    Name = m.Tags.Name,
-                    AssetId = m.Tags.AssetId,
-                    AssetPrice = m.Tags.AssetPrice,
-                    ContractType = m.Tags.ContractType,
-                    ContractStatus = m.Tags.ContractStatus,
-                    CreatedTime = currentTime,
-                    ContractExpiry = currentTime + (contractExpiry * 60 * 1000),  -- Convert minutes to milliseconds
-                    BetAmount = qty,
-                    Payout = m.Tags.Payout,
-                    Outcome = outcome  -- Initialize outcome as nil
-                }
-
-                print("Trades table after update: " .. tableToJson(openTrades))
-                ao.send({ Target = m.From, Data = "Successfully Created Trade" })
-            else
-                -- Print error message for invalid quantity
-                print("Invalid quantity: " .. qty .. ". Must be more than 1 and less than 200000.")
-                ao.send({ Target = m.From, Data = "Invalid quantity. Must be more than 1 and less than 200000." })
-            end
-        else
-            -- Print error message for missing tags
-            print("Missing required tags for trade creation.")
-            ao.send({ Target = m.From, Data = "Missing required tags for trade creation." })
-        end
-    end
+    "archiveClosedTrades",
+    Handlers.utils.hasMatchingTag("Action", "Archive-Closed-Trades"),
+    archiveClosedTrades
 )
 
 Handlers.add(
-    "openTrades",
-    Handlers.utils.hasMatchingTag("Action", "openTrades"),
-    function(m)
-        ao.send({ Target = m.From, Data = tableToJson(openTrades)})
-    end
-)
-
-Handlers.add(
-    "closedTrades",
-    Handlers.utils.hasMatchingTag("Action", "closedTrades"),
-    function(m)
-        -- Print the entire closedTrades table as a string for debugging
-        print("Debugging closedTrades table:")
-        print(closedTrades, {comment = false})
-
-        -- Create a new table to store valid trades
-        local validTrades = {}
-        for tradeId, trade in pairs(closedTrades) do
-            local status, result = pcall(function() return tableToJson(trade) end)
-            if status then
-                validTrades[tradeId] = trade
-                print("Successfully converted tradeId: " .. tostring(tradeId) .. " to JSON.")
-            else
-                print("Error converting tradeId: " .. tostring(tradeId) .. " to JSON. Skipping this trade.")
-            end
-        end
-
-        -- Convert validTrades to JSON and send it
-        local jsonData = tableToJson(validTrades)
-        ao.send({ Target = m.From, Data = jsonData })
-    end
+    "archiveWinners",
+    Handlers.utils.hasMatchingTag("Action", "Archive-Winners"),
+    archiveWinners
 )
 
 
--- Handler to clear expiredTrades
-Handlers.add(
-    "ClearExpiredTrades",
-    Handlers.utils.hasMatchingTag("Action", "ClearExpired"),
-    function(m)
-        expiredTrades = {}
-        print("Expired trades have been cleared.")
-    end
-)
-
-Handlers.add(
-    "ClearWinners",
-    Handlers.utils.hasMatchingTag("Action", "ClearWinners"),
-    function(m)
-        winners = {}
-        print("winners  have been cleared.")
-    end
-)
-
-
--- Handler to clear closedTrades
-Handlers.add(
-    "ClearClosedTrades",
-    Handlers.utils.hasMatchingTag("Action", "ClearClosed"),
-    function(m)
-        closedTrades = {}
-        print("Closed trades have been cleared.")
-    end
-)
 
 Handlers.add(
   "CronTick", -- handler name
   Handlers.utils.hasMatchingTag("Action", "cron"), -- handler pattern to identify cron message
-    checkExpiredContracts,
-   processExpiredContracts
+    function(m)
+        print("CronTick handler triggered.")
+        checkExpiredContracts(m)
+        processExpiredContracts(m)
+        archiveClosedTrades(m)
+        archiveWinners(m)
+    end
 )
-
