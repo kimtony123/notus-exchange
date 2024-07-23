@@ -111,7 +111,7 @@ const adjustProbability = (
   const decayFactor = timeDecay(expiryMinutes);
   const timeAdjustedProb = adjustedProb * decayFactor;
 
-  const betAdjustmentFactor = 1 + betAmount / 100000;
+  const betAdjustmentFactor = 1 + betAmount / 10000000;
   const finalAdjustedProb = timeAdjustedProb / betAdjustmentFactor;
 
   return finalAdjustedProb * (1 + spread);
@@ -532,7 +532,7 @@ const CoinDetail: React.FC = () => {
         <Divider />
         <Grid.Column>
           <Form size="large">
-            <span> NOT Balance: {aocBalance}</span>
+            <span> NEO Balance: {aocBalance}</span>
             <Segment stacked>
               <Image src={response.image.small} wrapped ui={false} />
               <span> Asset Name: {response.name}</span>
@@ -550,7 +550,7 @@ const CoinDetail: React.FC = () => {
                 onChange={handleInputChange}
                 icon="money"
                 iconPosition="left"
-                placeholder="Amount of NOT."
+                placeholder="Amount of NEO."
               />
               <span>Minimum Trade time is 5 minutes</span>
               <Form.Input
@@ -597,7 +597,7 @@ const CoinDetail: React.FC = () => {
                 onChange={handleInputChange}
                 icon="money"
                 iconPosition="left"
-                placeholder="Amount of NOT."
+                placeholder="Amount of NEO."
               />
               <span>Minimum Trade time is 5 minutes</span>
               <Form.Input
