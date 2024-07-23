@@ -30,6 +30,7 @@ import Skeleton from "./Skeleton"; // Adjust the import path as necessary
 import { useEffect, useState } from "react";
 import { message, createDataItemSigner, result } from "@permaweb/aoconnect";
 import { PermissionType } from "arconnect";
+import useCronTick from "./useCronTick";
 
 // Define types for route parameters
 type RouteParams = {
@@ -89,15 +90,17 @@ interface Trade {
   Payout: number;
   Outcome: string;
 }
+
 // Time Decay Function
 const timeDecay = (expiryMinutes: number) => {
   const decayFactor = Math.exp(-expiryMinutes / 525600); // assuming 60 minutes for full decay
-  return decayFactor;
+  return Math.max(decayFactor, 0.01); // Ensure a minimum decay factor to prevent infinity payoff
 };
 
 // Adjust Probability Function
 const adjustProbability = (
   prob: number,
+  betAmount: number,
   spread: number = 0,
   expiryMinutes: number = 0
 ) => {
@@ -108,7 +111,10 @@ const adjustProbability = (
   const decayFactor = timeDecay(expiryMinutes);
   const timeAdjustedProb = adjustedProb * decayFactor;
 
-  return timeAdjustedProb * (1 + spread);
+  const betAdjustmentFactor = 1 + betAmount / 100000;
+  const finalAdjustedProb = timeAdjustedProb / betAdjustmentFactor;
+
+  return finalAdjustedProb * (1 + spread);
 };
 
 // Define the CoinDetail component
@@ -124,7 +130,7 @@ const CoinDetail: React.FC = () => {
     "DISPATCH",
   ];
 
-  const NOT = "HmOxNfr7ZCmT7hhx1LTO7765b-NGoT6lhha_ffjaCn4";
+  const NOT = "wPmY5MO0DPWpgUGGj8LD7ZmuPmWdYZ2NnELeXdGgctQ";
 
   const [aocBalance, setAocBalance] = useState(0);
   const [address, setAddress] = useState("");
@@ -173,11 +179,13 @@ const CoinDetail: React.FC = () => {
 
     const adjustedDownProbability = adjustProbability(
       sentimentVotesDownPercentage,
+      Number(betAmountPut),
       isDownHigher ? higherSpread : lowerSpread,
       expiryMinutesPut
     );
     const adjustedUpProbability = adjustProbability(
       sentimentVotesUpPercentage,
+      Number(betAmountCall),
       isDownHigher ? lowerSpread : higherSpread,
       expiryMinutesCall
     );
@@ -442,6 +450,8 @@ const CoinDetail: React.FC = () => {
     fetchClosedTrades();
   }, []);
 
+  useCronTick(NOT);
+
   useEffect(() => {
     const fetchBalance = async (process: string) => {
       try {
@@ -645,7 +655,7 @@ const CoinDetail: React.FC = () => {
               <TableCell>{trade.ContractType}</TableCell>
               <TableCell>{trade.BetAmount}</TableCell>
               <TableCell>{trade.CreatedTime}</TableCell>
-              <TableCell>{trade.ContractExpiry}</TableCell>
+              <TableCell> {trade.ContractExpiry}</TableCell>
               <TableCell>{trade.ContractStatus}</TableCell>
               <TableCell>{trade.ClosingTime}</TableCell>
               <TableCell>{trade.ClosingPrice}</TableCell>
