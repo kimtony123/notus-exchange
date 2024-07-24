@@ -174,8 +174,9 @@ function processExpiredContracts(msg)
     -- Define the callback to process expired trades after fetching prices
     local function processTrades()
         for tradeId, trade in pairs(expiredTrades) do
-            print("Processing tradeId:", tradeId)
             fetchPrice()
+            print("Processing tradeId:", tradeId)
+           
             local closingPrice = getTokenPrice(trade.AssetId)
             if closingPrice then
                 trade.ClosingPrice = closingPrice
@@ -255,6 +256,11 @@ Handlers.add(
     Handlers.utils.hasMatchingTag("Action", "checkContract"),
         checkExpiredContracts
 )
+
+-- Function to get the current time
+function getCurrentTime(msg)
+    return tonumber(msg.Timestamp)
+end
 
 Handlers.add(
     "trade",
@@ -412,5 +418,8 @@ Handlers.add(
   "CronTick", -- handler name
   Handlers.utils.hasMatchingTag("Action", "Cron"), -- handler pattern to identify cron message
     checkExpiredContracts,
-   processExpiredContracts
+    function (m)
+       processExpiredContracts(m) 
+    end
+   
 )

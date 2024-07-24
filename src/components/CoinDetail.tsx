@@ -645,7 +645,6 @@ const CoinDetail: React.FC = () => {
             <TableHeaderCell>Outcome</TableHeaderCell>
           </TableRow>
         </TableHeader>
-
         <TableBody>
           {opentrades.map((trade, index) => (
             <TableRow key={index}>
