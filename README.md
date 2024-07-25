@@ -1,32 +1,60 @@
-This project was bootstrapped with [vite](https://vitejs.dev/guide/#scaffolding-your-first-vite-project).
+Notus Exchange Options is a decentralized Binary Options Trading Platform.
 
-![Project Preview](./cryptoupdate.png)
-![Project Preview](./cryptoupdate2.png)
+Here are Steps you can take to successfully test and run it locally
 
-## Available Scripts
+# Step 1 (Cloning the repo).
 
-In the project directory, you can run:
+clone the repo in your home directory using the below script
 
-### `yarn`
+    git clone https://github.com/kimtony123/notus-exchange.git
 
-Instal All dependencies in this project
+# Step 2 (Insatlling Dependencies).
 
-### `yarn dev`
+Go to the Directory using the code below.
 
-Runs the app in the development mode.<br />
-Open [http://127.0.0.1:5173](http://127.0.0.1:5173) to view it in the browser.
+    cd Notus-exchange
 
-### Link
+install the dependencies using the below script
 
-Vite: https://vitejs.dev/guide/#scaffolding-your-first-vite-project
-Tailwind CSS: https://tailwindcss.com/docs/guides/vite
-CoinGecko API: https://www.coingecko.com/en/api/documentation
-React-Chartjs-2: https://react-chartjs-2.js.org/examples/area-chart
-React-router-dom: https://reactrouter.com/docs/en/v6/getting-started/overview
-HeroIcons: https://heroicons.com/
-Moment: https://momentjs.com/
+    npm install
 
+# Step 3 (Creating and running the processes locally.).
 
-### Video Tutorial
+    Run the process locally by running below script
+        cd src
+        cd AO
+        cd process
+        aos
 
-You can see my youtube video for this project in [here](https://youtu.be/uiW4tArFLkE)
+    Create the NEO token by running the following process
+
+        .load token.lua
+
+    Deploy the NEO process using the following link
+
+        .load neo.lua
+
+# Step 4 (Starting the front-end).
+
+    In the parent folder run the following script to start up the Dapp
+
+        npm run dev
+    Go to the components folder and into the coindetail.tsx file. Change below variable
+
+        const NOT = "wPmY5MO0DPWpgUGGj8LD7ZmuPmWdYZ2NnELeXdGgctQ";
+
+     into
+        const NOT = "Your ProcessId";
+
+# Step 5 (Using the Dapp).
+
+    1. Creating a trade - Connect your wallet then place any trades you want.
+    2. Checking whether trade has expired - You can do it via terminal using below code in your process
+
+        Send ({Target = ao.id , Action = "checkContract"})
+
+    3.Processing Trades. You can easily do it by running the following code.
+
+        Send ({Target = ao.id , Action = "completeTrade"})
+
+Step 6.

@@ -253,8 +253,7 @@ Handlers.add(
 Handlers.add(
     "checkContract",
     Handlers.utils.hasMatchingTag("Action", "checkContract"),
-        checkExpiredContracts
-)
+        checkExpiredContracts)
 
 Handlers.add(
     "trade",
