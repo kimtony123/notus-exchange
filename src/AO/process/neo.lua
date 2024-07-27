@@ -22,6 +22,7 @@ openTrades = openTrades or {}
 expiredTrades = expiredTrades or {}
 closedTrades = closedTrades or {}
 winners = winners or {}
+Profits = Profits or {}
 
 -- Callback function for fetch price
 fetchPriceCallback = nil
@@ -186,6 +187,7 @@ function processExpiredContracts(msg)
                     winners[tradeId] = trade
                 else
                     trade.Outcome = "lost"
+                   
                     closedTrades[tradeId] = trade
                 end
             else
