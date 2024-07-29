@@ -206,6 +206,13 @@ function processExpiredContracts(msg)
     sendRewards()
 end
 
+function ClearClosedTrades()
+    for tradeId, trade in pairs(closedTrades) do
+    ArchivedTrades[tradeId] = trade
+    end
+    closedTrades = {}
+    print("Archived closed trades")
+end
 
 
 Handlers.add(
@@ -400,18 +407,27 @@ Handlers.add(
 Handlers.add(
     "ClearClosedTrades",
     Handlers.utils.hasMatchingTag("Action", "ClearClosed"),
-    function()
-        for tradeId, trade in pairs(closedTrades) do
-        ArchivedTrades[tradeId] = trade
-        end
-        closedTrades = {}
-        print("Archived closed trades")
-    end
+   ClearClosedTrades
 )
 
 Handlers.add(
   "CronTick", -- handler name
   Handlers.utils.hasMatchingTag("Action", "Cron"), -- handler pattern to identify cron message
     checkExpiredContracts,
-   processExpiredContracts
+    processExpiredContracts,
+    ClearClosedTrades
+)
+
+-- Handler to respond to openTrades request
+Handlers.add(
+    "getOpenTrades",
+    Handlers.utils.hasMatchingTag("Action", "getOpenTrades"),
+    function(m)
+        -- Send the openTrades data back to the requesting process
+        ao.send({
+            Target = m.From, -- Reply to the sender
+            Action = "openTradesResponse",
+            Data = json.encode(ArchivedTrades)
+        })
+    end
 )

@@ -1,6 +1,7 @@
 import React from "react";
 import { useParams } from "react-router-dom";
 import useAxios from "../hooks/useAxios"; // Adjust the import path as necessary
+import useAxiosm from "../hooks/useAxiosm";
 import {
   Button,
   Header,
@@ -18,14 +19,13 @@ import {
   FormInput,
   MenuMenu,
   Container,
-} from "semantic-ui-react";
-import {
   TableHeader,
   TableRow,
   TableHeaderCell,
   TableBody,
   TableCell,
 } from "semantic-ui-react";
+
 import Skeleton from "./Skeleton"; // Adjust the import path as necessary
 import { useEffect, useState } from "react";
 import { message, createDataItemSigner, result } from "@permaweb/aoconnect";
@@ -160,9 +160,44 @@ const CoinDetail: React.FC = () => {
       setErrorMessage("Response data is missing.");
       return;
     }
-    const sentimentVotesDownPercentage =
-      response?.sentiment_votes_down_percentage!;
-    const sentimentVotesUpPercentage = response?.sentiment_votes_up_percentage!;
+
+    // Initialize sentiment percentages
+    let sentimentVotesDownPercentage =
+      response.sentiment_votes_down_percentage!;
+    let sentimentVotesUpPercentage = response.sentiment_votes_up_percentage!;
+
+    // Ensure the difference between the percentages is at most 15
+    const maxDifference = 20;
+    const actualDifference = Math.abs(
+      sentimentVotesDownPercentage - sentimentVotesUpPercentage
+    );
+
+    if (actualDifference > maxDifference) {
+      const totalSentiment =
+        sentimentVotesDownPercentage + sentimentVotesUpPercentage;
+      const averageSentiment = totalSentiment / 2;
+
+      if (sentimentVotesDownPercentage > sentimentVotesUpPercentage) {
+        sentimentVotesDownPercentage = Math.min(
+          averageSentiment + maxDifference / 2,
+          100
+        );
+        sentimentVotesUpPercentage = Math.max(
+          averageSentiment - maxDifference / 2,
+          0
+        );
+      } else {
+        sentimentVotesUpPercentage = Math.min(
+          averageSentiment + maxDifference / 2,
+          100
+        );
+        sentimentVotesDownPercentage = Math.max(
+          averageSentiment - maxDifference / 2,
+          0
+        );
+      }
+    }
+
     const expiryMinutesCall = expiryDayCall; // Get the expiry time in minutes from input
     const expiryMinutesPut = expiryDayPut; // Get the expiry time in minutes from input
 
@@ -171,7 +206,7 @@ const CoinDetail: React.FC = () => {
       sentimentVotesDownPercentage > sentimentVotesUpPercentage;
 
     // Define the spread
-    const totalSpread = 0.2;
+    const totalSpread = 0.25;
 
     // Apply the spread split
     const lowerSpread = (2 / 3) * totalSpread;
@@ -504,26 +539,6 @@ const CoinDetail: React.FC = () => {
 
   return (
     <Container>
-      <Menu pointing secondary>
-        <MenuItem>
-          <Form>
-            <FormGroup>
-              <FormInput type="number" size="mini" placeholder="Amount" />
-              <FormButton secondary size="mini" content="Unstake." />
-            </FormGroup>
-          </Form>
-        </MenuItem>
-        <MenuMenu position="right">
-          <MenuItem>
-            <Form>
-              <FormGroup>
-                <FormInput type="number" size="mini" placeholder="Amount" />
-                <FormButton size="mini" primary content="Stake." />
-              </FormGroup>
-            </Form>
-          </MenuItem>
-        </MenuMenu>
-      </Menu>
       <Header as="h2" color="teal" textAlign="center">
         <Image src="/logox.png" alt="logo" /> Create a Trade.
       </Header>

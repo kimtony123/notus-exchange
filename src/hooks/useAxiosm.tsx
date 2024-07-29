@@ -1,9 +1,9 @@
-import axios, { AxiosRequestConfig, AxiosResponse } from 'axios';
-import { useEffect, useState } from 'react';
+import axios, { AxiosRequestConfig, AxiosResponse } from "axios";
+import { useEffect, useState } from "react";
 
 // Define types for the hook's state and parameters
 interface UseAxiosState<T> {
-  response: T | null;
+  responsem: T | null;
   loading: boolean;
   error: string | null;
 }
@@ -11,11 +11,11 @@ interface UseAxiosState<T> {
 // Define a generic type for the hook's return value
 const useAxios = <T,>(param: AxiosRequestConfig): UseAxiosState<T> => {
   // State to store the response
-  const [response, setResponse] = useState<T | null>(null);
-  
+  const [responsem, setResponse] = useState<T | null>(null);
+
   // State to store the loading status
   const [loading, setLoading] = useState<boolean>(false);
-  
+
   // State to store any error message
   const [error, setError] = useState<string | null>(null);
 
@@ -29,7 +29,7 @@ const useAxios = <T,>(param: AxiosRequestConfig): UseAxiosState<T> => {
       const result: AxiosResponse<T> = await axios(param);
       setResponse(result.data);
     } catch (err: any) {
-      setError(err.message || 'An error occurred');
+      setError(err.message || "An error occurred");
     } finally {
       setLoading(false);
     }
@@ -42,7 +42,7 @@ const useAxios = <T,>(param: AxiosRequestConfig): UseAxiosState<T> => {
 
   // Return the state
   return {
-    response,
+    responsem,
     loading,
     error,
   };
