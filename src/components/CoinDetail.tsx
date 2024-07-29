@@ -594,7 +594,7 @@ const CoinDetail: React.FC = () => {
         </Grid.Column>
         <Grid.Column>
           <Form size="large">
-            <span> Staked Balance: 0</span>
+            <span> Neo HedgeFund Balance: 0</span>
             <Segment stacked>
               <Image src={response.image.small} wrapped ui={false} />
               <span> Asset Name: {response.name}</span>
