@@ -131,6 +131,7 @@ const CoinDetail: React.FC = () => {
   ];
 
   const NOT = "wPmY5MO0DPWpgUGGj8LD7ZmuPmWdYZ2NnELeXdGgctQ";
+  const USDA = "GcFxqTQnKHcr304qnOcq00ZqbaYGDn4Wbb0DHAM-wvU";
 
   const [aocBalance, setAocBalance] = useState(0);
   const [address, setAddress] = useState("");
@@ -161,13 +162,13 @@ const CoinDetail: React.FC = () => {
       return;
     }
 
-    // Initialize sentiment percentages
+    // Get sentiment vote percentages
     let sentimentVotesDownPercentage =
-      response.sentiment_votes_down_percentage!;
-    let sentimentVotesUpPercentage = response.sentiment_votes_up_percentage!;
+      response?.sentiment_votes_down_percentage!;
+    let sentimentVotesUpPercentage = response?.sentiment_votes_up_percentage!;
 
     // Ensure the difference between the percentages is at most 15
-    const maxDifference = 20;
+    const maxDifference = 15;
     const actualDifference = Math.abs(
       sentimentVotesDownPercentage - sentimentVotesUpPercentage
     );
@@ -206,7 +207,7 @@ const CoinDetail: React.FC = () => {
       sentimentVotesDownPercentage > sentimentVotesUpPercentage;
 
     // Define the spread
-    const totalSpread = 0.25;
+    const totalSpread = 0.2;
 
     // Apply the spread split
     const lowerSpread = (2 / 3) * totalSpread;
@@ -234,8 +235,8 @@ const CoinDetail: React.FC = () => {
       adjustedUpProbability / totalAdjustedProbability;
 
     // Calculate the odds
-    setOddsDown((1 / normalizedDownProbability).toFixed(3));
-    setOddsUp((1 / normalizedUpProbability).toFixed(3));
+    setOddsDown((1 / normalizedDownProbability - 0.3).toFixed(3));
+    setOddsUp((1 / normalizedUpProbability - 0.3).toFixed(3));
     setErrorMessage("");
   };
 
@@ -265,7 +266,52 @@ const CoinDetail: React.FC = () => {
 
   const tradeCall = async () => {
     setIsLoadingCall(true);
+
+    // Function to handle the swap and set success state
+    const send = async (): Promise<void> => {
+      var value = parseInt(betAmountCall);
+      var units = value * 1000000000000;
+      var credUnits = units.toString();
+      try {
+        const getSwapMessage = await message({
+          process: USDA,
+          tags: [
+            { name: "Action", value: "Transfer" },
+            { name: "Recipient", value: NOT },
+            { name: "Quantity", value: credUnits },
+          ],
+          signer: createDataItemSigner(window.arweaveWallet),
+        });
+
+        let { Messages, Error } = await result({
+          message: getSwapMessage,
+          process: USDA,
+        });
+        if (Error) {
+          alert("Error Sending USDA: " + Error);
+          throw new Error(Error);
+        }
+        if (!Messages || Messages.length === 0) {
+          alert("No messages were returned from ao. Please try later.");
+          throw new Error("No messages were returned from ao.");
+        }
+        const actionTag = Messages[0].Tags.find(
+          (tag: Tag) => tag.name === "Action"
+        );
+        if (actionTag.value === "Debit-Notice") {
+          setSuccess(true);
+        }
+      } catch (error) {
+        alert("There was an error sending USDA: " + error);
+        throw error;
+      }
+    };
+
     try {
+      // Await the send function to ensure it completes before proceeding
+      await send();
+
+      // Proceed with creating the trade only if send was successful
       const getPropMessage = await message({
         process: NOT,
         tags: [
@@ -282,51 +328,89 @@ const CoinDetail: React.FC = () => {
           { name: "ContractStatus", value: "Open" },
           {
             name: "ContractExpiry",
-            value: String(expiryDayCall),
+            value: String(expiryDayPut),
           },
           {
             name: "BetAmount",
-            value: String(Number(betAmountCall) * 1000),
+            value: String(Number(betAmountCall) * 1000000000000),
           },
-          {
-            name: "Payout",
-            value: String(oddsUp),
-          },
+          { name: "Payout", value: String(oddsDown) },
         ],
         signer: createDataItemSigner(window.arweaveWallet),
       });
-      try {
-        let { Messages, Error } = await result({
-          message: getPropMessage,
-          process: NOT,
-        });
-        if (Error) {
-          alert("Error handling staking:" + Error);
-          return;
-        }
-        if (!Messages || Messages.length === 0) {
-          alert("No messages were returned from ao. Please try later.");
-          return;
-        }
-        alert(Messages[0].Data);
-        setBetAmountCall("");
-        setExpiryDayCall("");
-      } catch (error) {
-        alert("There was an error when Buying: " + error);
+
+      let { Messages, Error } = await result({
+        message: getPropMessage,
+        process: NOT,
+      });
+      if (Error) {
+        alert("Error trading : " + Error);
+        return;
       }
+      if (!Messages || Messages.length === 0) {
+        alert("No messages were returned from ao. Please try later.");
+        return;
+      }
+      alert(Messages[0].Data);
+      setBetAmountCall("");
+      setExpiryDayCall("");
     } catch (error) {
-      alert("There was an error staking: " + error);
+      alert("There was an error in the trade process: " + error);
     }
     setIsLoadingCall(false);
   };
 
-  const randomIntPut = (min: number, max: number): number => {
-    return Math.floor(Math.random() * (max - min + 1)) + min;
-  };
-
   const tradePut = async () => {
     setIsLoadingPut(true);
+
+    // Function to handle the swap and set success state
+    const send = async (): Promise<void> => {
+      var value = parseInt(betAmountPut);
+      var units = value * 1000000000000;
+      var credUnits = units.toString();
+      try {
+        const getSwapMessage = await message({
+          process: USDA,
+          tags: [
+            { name: "Action", value: "Transfer" },
+            { name: "Recipient", value: NOT },
+            { name: "Quantity", value: credUnits },
+          ],
+          signer: createDataItemSigner(window.arweaveWallet),
+        });
+
+        let { Messages, Error } = await result({
+          message: getSwapMessage,
+          process: USDA,
+        });
+        if (Error) {
+          alert("Error Sending USDA: " + Error);
+          throw new Error(Error);
+        }
+        if (!Messages || Messages.length === 0) {
+          alert("No messages were returned from ao. Please try later.");
+          throw new Error("No messages were returned from ao.");
+        }
+        const actionTag = Messages[0].Tags.find(
+          (tag: Tag) => tag.name === "Action"
+        );
+        if (actionTag.value === "Debit-Notice") {
+          setSuccess(true);
+        }
+      } catch (error) {
+        alert("There was an error sending USDA: " + error);
+        throw error;
+      }
+    };
+
+    const randomIntPut = (min: number, max: number): number => {
+      return Math.floor(Math.random() * (max - min + 1)) + min;
+    };
     try {
+      // Await the send function to ensure it completes before proceeding
+      await send();
+
+      // Proceed with creating the trade only if send was successful
       const getPropMessage = await message({
         process: NOT,
         tags: [
@@ -345,33 +429,34 @@ const CoinDetail: React.FC = () => {
             name: "ContractExpiry",
             value: String(expiryDayPut),
           },
-          { name: "BetAmount", value: String(Number(betAmountPut) * 1000) },
+          {
+            name: "BetAmount",
+            value: String(Number(betAmountPut) * 1000000000000),
+          },
           { name: "Payout", value: String(oddsDown) },
         ],
         signer: createDataItemSigner(window.arweaveWallet),
       });
-      try {
-        let { Messages, Error } = await result({
-          message: getPropMessage,
-          process: NOT,
-        });
-        if (Error) {
-          alert("Error handling staking:" + Error);
-          return;
-        }
-        if (!Messages || Messages.length === 0) {
-          alert("No messages were returned from ao. Please try later.");
-          return;
-        }
-        alert(Messages[0].Data);
-        setBetAmountPut("");
-        setExpiryDayPut("");
-      } catch (error) {
-        alert("There was an error when Buying: " + error);
+
+      let { Messages, Error } = await result({
+        message: getPropMessage,
+        process: NOT,
+      });
+      if (Error) {
+        alert("Error trading : " + Error);
+        return;
       }
+      if (!Messages || Messages.length === 0) {
+        alert("No messages were returned from ao. Please try later.");
+        return;
+      }
+      alert(Messages[0].Data);
+      setBetAmountPut("");
+      setExpiryDayPut("");
     } catch (error) {
-      alert("There was an error staking: " + error);
+      alert("There was an error in the trade process: " + error);
     }
+
     setIsLoadingPut(false);
   };
 
@@ -402,7 +487,7 @@ const CoinDetail: React.FC = () => {
             const typedDetails: TradeDetails = details as TradeDetails;
             return {
               name,
-              BetAmount: typedDetails.BetAmount / 1000,
+              BetAmount: typedDetails.BetAmount / 1000000000000,
               ContractType: typedDetails.ContractType,
               Name: typedDetails.Name,
               AssetPrice: typedDetails.AssetPrice,
@@ -457,7 +542,7 @@ const CoinDetail: React.FC = () => {
               const typedDetails: TradeDetails = details as TradeDetails;
               return {
                 name,
-                BetAmount: typedDetails.BetAmount / 1000,
+                BetAmount: typedDetails.BetAmount / 1000000000000,
                 ContractType: typedDetails.ContractType,
                 Name: typedDetails.Name,
                 AssetPrice: typedDetails.AssetPrice,
@@ -513,9 +598,9 @@ const CoinDetail: React.FC = () => {
             (tag: Tag) => tag.name === "Balance"
           );
           const balance = balanceTag
-            ? parseFloat((balanceTag.value / 1000).toFixed(4))
+            ? parseFloat((balanceTag.value / 1000000000000).toFixed(4))
             : 0;
-          if (process === NOT) {
+          if (process === USDA) {
             setAocBalance(balance);
           }
         } catch (error) {
@@ -525,7 +610,7 @@ const CoinDetail: React.FC = () => {
         console.error(error);
       }
     };
-    fetchBalance(NOT);
+    fetchBalance(USDA);
   }, [address]);
 
   if (!response) {
@@ -547,7 +632,7 @@ const CoinDetail: React.FC = () => {
         <Divider />
         <Grid.Column>
           <Form size="large">
-            <span> NEO Balance: {aocBalance}</span>
+            <span> USDA Balance: {aocBalance}</span>
             <Segment stacked>
               <Image src={response.image.small} wrapped ui={false} />
               <span> Asset Name: {response.name}</span>
@@ -558,6 +643,7 @@ const CoinDetail: React.FC = () => {
                 Asset Price : {response.market_data.current_price.usd}
               </span>
               <Divider />
+              <span>Minimum Trade Amount is 0.5 USDA</span>
               <Form.Input
                 type="number"
                 name="betAmountCall"
@@ -565,7 +651,7 @@ const CoinDetail: React.FC = () => {
                 onChange={handleInputChange}
                 icon="money"
                 iconPosition="left"
-                placeholder="Amount of NEO."
+                placeholder="Amount of USDA."
               />
               <span>Minimum Trade time is 5 minutes</span>
               <Form.Input
@@ -594,7 +680,7 @@ const CoinDetail: React.FC = () => {
         </Grid.Column>
         <Grid.Column>
           <Form size="large">
-            <span> Neo HedgeFund Balance: 0</span>
+            <span> Staked USDA Balance: 0</span>
             <Segment stacked>
               <Image src={response.image.small} wrapped ui={false} />
               <span> Asset Name: {response.name}</span>
@@ -605,6 +691,7 @@ const CoinDetail: React.FC = () => {
                 Asset Price : {response.market_data.current_price.usd}
               </span>
               <Divider />
+              <span>Minimum Trade Amount is 0.5 USDA</span>
               <Form.Input
                 type="number"
                 name="betAmountPut"
@@ -612,7 +699,7 @@ const CoinDetail: React.FC = () => {
                 onChange={handleInputChange}
                 icon="money"
                 iconPosition="left"
-                placeholder="Amount of NEO."
+                placeholder="Amount of USDA."
               />
               <span>Minimum Trade time is 5 minutes</span>
               <Form.Input
@@ -745,9 +832,6 @@ const CoinDetail: React.FC = () => {
           />
         </MenuItem>
       </Menu>
-      {errorMessage && (
-        <div style={{ color: "red", textAlign: "center" }}>{errorMessage}</div>
-      )}
     </Container>
   );
 };

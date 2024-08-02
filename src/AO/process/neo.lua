@@ -8,12 +8,13 @@ BASE_URL = "https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order
 FEE_AMOUNT = "1000000000000" -- 1 $0RBT
 
 TOKEN_PRICES = TOKEN_PRICES or {}
-Balances = Balances or {}
+balances = balances or {}
 
 ArchivedTrades = ArchivedTrades or {}
 WinnersList = WinnersList or {}
 -- Credentials token
 NOT = "wPmY5MO0DPWpgUGGj8LD7ZmuPmWdYZ2NnELeXdGgctQ"
+USDA = "GcFxqTQnKHcr304qnOcq00ZqbaYGDn4Wbb0DHAM-wvU";
 
 -- Table to track addresses that have requested tokens
 RequestedAddresses = RequestedAddresses or {}
@@ -117,13 +118,13 @@ function sendRewards()
         if winner.Payout then
             local payout = winner.Payout * winner.BetAmount
             ao.send({
-                Target = NOT,
+                Target = USDA,
                 Action = "Transfer",
                 Quantity = tostring(payout),
                 Recipient = tostring(winner.UserId)
             })
             -- Ensure Balances[winner.UserId] is initialized to 0 if it's nil
-            Balances[winner.UserId] = (Balances[winner.UserId] or 0) + payout
+            balances[winner.UserId] = (balances[winner.UserId] or 0) + payout
             print("Transferred: " .. payout .. " successfully to " .. winner.UserId)
 
             -- Update the trade outcome to "won"
@@ -306,25 +307,8 @@ Handlers.add(
                 return
             end
 
-            -- Check if the user has enough balance
-            local userBalance = Balances[m.From] or 0
-            if userBalance < qty then
-                print("Error: Insufficient balance for user:", m.From)
-                ao.send({ Target = m.From, Data = "Insufficient balance to place the trade." })
-                return
-            end
-
             -- Check if qty is within the allowed range
-            if qty > 1 and qty < 200000000 then
-                ao.send({
-                    Target = NOT,
-                    Action = "Transfer",
-                    Quantity = tostring(qty),
-                    Recipient = NOT
-                })
-
-                Balances[m.From] = userBalance - qty
-                print("Transferred: " .. qty .. " successfully to " .. NOT)
+            if qty > 500000000000 and qty < 5000000000000 then
                 local outcome = tostring("pending")
                 openTrades[m.Tags.TradeId] = {
                     UserId = m.From,
